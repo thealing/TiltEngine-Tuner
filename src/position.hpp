@@ -13,6 +13,7 @@ struct Position
 	uint64_t colors[2];
 	char move_counts[6];
 	char attack_counts[6];
+	char defense_counts[6];
 
 	Position()
 	{
@@ -68,14 +69,16 @@ struct Position
 		// precalculating mobility counters
 		for (int color = 0; color < 2; color++)
 		{
-			uint64_t occupied_mask = colors[WHITE] | colors[BLACK];
-			uint64_t empty_mask = ~occupied_mask;
+			uint64_t color_mask = colors[color];
 			uint64_t opponent_mask = colors[color ^ 1];
+			uint64_t occupied_mask = color_mask | opponent_mask;
+			uint64_t empty_mask = ~occupied_mask;
 			uint64_t pawn_mask = get_mask(PAWN, color);
-			move_counts[PAWN] += count_squares((pawn_mask >> 8) & empty_mask);
-			move_counts[PAWN] += count_squares(((pawn_mask & 0x00FF000000000000ULL) >> 16) & (empty_mask >> 8) & empty_mask);
-			attack_counts[PAWN] += count_squares((pawn_mask >> 7) & ~0x0101010101010101ULL & opponent_mask);
-			attack_counts[PAWN] += count_squares((pawn_mask >> 9) & ~0x8080808080808080ULL & opponent_mask);
+			uint64_t pawn_move_mask = pawn_mask >> 8;
+			uint64_t pawn_attack_mask = ((pawn_mask >> 7) & ~0x0101010101010101ULL) | ((pawn_mask >> 9) & ~0x8080808080808080ULL);
+			move_counts[PAWN] += count_squares(pawn_move_mask & empty_mask);
+			attack_counts[PAWN] += count_squares(pawn_attack_mask & opponent_mask);
+			defense_counts[PAWN] += count_squares(pawn_attack_mask & color_mask);
 			for (int piece = 1; piece < 6; piece++)
 			{
 				uint64_t src_mask = get_mask(piece, color);
@@ -103,14 +106,17 @@ struct Position
 					}
 					uint64_t move_mask = dst_mask & empty_mask;
 					uint64_t attack_mask = dst_mask & opponent_mask;
+					uint64_t defense_mask = dst_mask & color_mask;
 					move_counts[piece] += count_squares(move_mask);
 					attack_counts[piece] += count_squares(attack_mask);
+					defense_counts[piece] += count_squares(defense_mask);
 				}
 			}
 			for (int piece = 0; piece < 6; piece++)
 			{
 				move_counts[piece] *= -1;
 				attack_counts[piece] *= -1;
+				defense_counts[piece] *= -1;
 			}
 			flip();
 		}

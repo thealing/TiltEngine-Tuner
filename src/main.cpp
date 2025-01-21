@@ -69,7 +69,7 @@ void load_data()
 inline const string piece_names[6] = { "pawn", "knight", "bishop", "rook", "queen", "king" };
 inline const string phase_names[2] = { "opening", "endgame" };
 
-void export_values(const filesystem::path& path, const Evaluator& evaluator)
+void export_values(const filesystem::path& path, const Evaluator& evaluator, double error)
 {
 	filesystem::create_directories(output_path);
 	ofstream file(output_path / path);
@@ -97,6 +97,15 @@ void export_values(const filesystem::path& path, const Evaluator& evaluator)
 		}
 		file << endl << endl;
 	}
+	for (int phase = 0; phase < 2; phase++)
+	{
+		file << phase_names[phase] << "_defense_values" << endl << endl;
+		for (int piece = 0; piece < 6; piece++)
+		{
+			file << ((double*)&evaluator.defense_values[piece])[phase] << ' ';
+		}
+		file << endl << endl;
+	}
 	for (int piece = 0; piece < 6; piece++)
 	{
 		for (int phase = 0; phase < 2; phase++)
@@ -113,6 +122,7 @@ void export_values(const filesystem::path& path, const Evaluator& evaluator)
 			file << endl;
 		}
 	}
+	file << "error: " << error << endl;
 }
 
 void save_values(const Evaluator& evaluator, int iteration_count, double learning_rate)
@@ -279,10 +289,10 @@ int main()
 		if (iteration_count % 5 == 0)
 		{
 			save_values(evaluator, iteration_count, learning_rate);
-			export_values(to_string(iteration_count) + ".txt", evaluator);
+			export_values(to_string(iteration_count) + ".txt", evaluator, error);
 		}
 	}
 	cout << "final error: " << error << endl;
-	export_values("final.txt", evaluator);
+	export_values("final.txt", evaluator, error);
 	return 0;
 }

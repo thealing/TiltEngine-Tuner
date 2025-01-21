@@ -115,6 +115,7 @@ struct Evaluator
 	Score square_values[6][64];
 	Score move_values[6];
 	Score attack_values[6];
+	Score defense_values[6];
 	double weights[6];
 	double total_weight;
 
@@ -161,8 +162,9 @@ struct Evaluator
 		for (int piece = 0; piece < 6; piece++)
 		{
 			uint64_t mask = position.pieces[piece];
-			//score += move_values[piece] * position.move_counts[piece];
-			//score += attack_values[piece] * position.attack_counts[piece];
+			score += move_values[piece] * position.move_counts[piece];
+			score += attack_values[piece] * position.attack_counts[piece];
+			score += defense_values[piece] * position.defense_counts[piece];
 			weight += count_squares(mask) * weights[piece];
 		}
 		evaluation.score = score;
@@ -193,6 +195,7 @@ struct Evaluator
 		{
 			move_values[piece] += score_change * position.move_counts[piece];
 			attack_values[piece] += score_change * position.attack_counts[piece];
+			defense_values[piece] += score_change * position.defense_counts[piece];
 		}
 		double t = evaluation.weight.opening * evaluator.total_weight;
 		double T = evaluator.total_weight;
