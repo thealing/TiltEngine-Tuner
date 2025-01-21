@@ -79,6 +79,8 @@ struct Position
 			move_counts[PAWN] += count_squares(pawn_move_mask & empty_mask);
 			attack_counts[PAWN] += count_squares(pawn_attack_mask & opponent_mask);
 			defense_counts[PAWN] += count_squares(pawn_attack_mask & color_mask);
+			uint64_t opponent_pawn_mask = get_mask(PAWN, color ^ 1);
+			uint64_t opponent_pawn_attack_mask = ((opponent_pawn_mask << 9) & ~0x0101010101010101ULL) | ((opponent_pawn_mask << 7) & ~0x8080808080808080ULL);
 			for (int piece = 1; piece < 6; piece++)
 			{
 				uint64_t src_mask = get_mask(piece, color);
@@ -104,6 +106,7 @@ struct Position
 							dst_mask = get_king_mask(src_square);
 							break;
 					}
+					dst_mask &= ~opponent_pawn_attack_mask;
 					uint64_t move_mask = dst_mask & empty_mask;
 					uint64_t attack_mask = dst_mask & opponent_mask;
 					uint64_t defense_mask = dst_mask & color_mask;
