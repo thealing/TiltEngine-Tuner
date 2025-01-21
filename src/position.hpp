@@ -1,0 +1,135 @@
+#pragma once
+
+#include "chess.hpp"
+#include "bitmasks.hpp"
+
+#include <iterator>
+#include <cstring>
+#include <cctype>
+
+struct Position
+{
+	uint64_t pieces[6];
+	uint64_t colors[2];
+	char move_counts[6];
+	char attack_counts[6];
+
+	Position()
+	{
+		memset(this, 0, sizeof(*this));
+	}
+
+	Position(const char fen[]) : Position()
+	{
+		// parsing fen
+		for (int square = 0; square < 64; fen++)
+		{
+			char c = *fen;
+			if (isdigit(c))
+			{
+				square += c - '0';
+			}
+			if (isalpha(c))
+			{
+				int piece;
+				switch (tolower(c))
+				{
+					case 'p':
+						piece = PAWN;
+						break;
+					case 'n':
+						piece = KNIGHT;
+						break;
+					case 'b':
+						piece = BISHOP;
+						break;
+					case 'r':
+						piece = ROOK;
+						break;
+					case 'q':
+						piece = QUEEN;
+						break;
+					case 'k':
+						piece = KING;
+						break;
+				}
+				set_square(pieces[piece], square);
+				if (isupper(c))
+				{
+					set_square(colors[WHITE], square);
+				}
+				else
+				{
+					set_square(colors[BLACK], square);
+				}
+				square++;
+			}
+		}
+		// precalculating mobility counters
+		for (int color = 0; color < 2; color++)
+		{
+			uint64_t occupied_mask = colors[WHITE] | colors[BLACK];
+			uint64_t empty_mask = ~occupied_mask;
+			uint64_t opponent_mask = colors[color ^ 1];
+			uint64_t pawn_mask = get_mask(PAWN, color);
+			move_counts[PAWN] += count_squares((pawn_mask >> 8) & empty_mask);
+			move_counts[PAWN] += count_squares(((pawn_mask & 0x00FF000000000000ULL) >> 16) & (empty_mask >> 8) & empty_mask);
+			attack_counts[PAWN] += count_squares((pawn_mask >> 7) & ~0x0101010101010101ULL & opponent_mask);
+			attack_counts[PAWN] += count_squares((pawn_mask >> 9) & ~0x8080808080808080ULL & opponent_mask);
+			for (int piece = 1; piece < 6; piece++)
+			{
+				uint64_t src_mask = get_mask(piece, color);
+				while (src_mask != 0)
+				{
+					int src_square = pop_square(src_mask);
+					uint64_t dst_mask = 0;
+					switch (piece)
+					{
+						case KNIGHT:
+							dst_mask = get_knight_mask(src_square);
+							break;
+						case BISHOP:
+							dst_mask = get_bishop_mask(src_square, occupied_mask);
+							break;
+						case ROOK:
+							dst_mask = get_rook_mask(src_square, occupied_mask);
+							break;
+						case QUEEN:
+							dst_mask = get_queen_mask(src_square, occupied_mask);
+							break;
+						case KING:
+							dst_mask = get_king_mask(src_square);
+							break;
+					}
+					uint64_t move_mask = dst_mask & empty_mask;
+					uint64_t attack_mask = dst_mask & opponent_mask;
+					move_counts[piece] += count_squares(move_mask);
+					attack_counts[piece] += count_squares(attack_mask);
+				}
+			}
+			for (int piece = 0; piece < 6; piece++)
+			{
+				move_counts[piece] *= -1;
+				attack_counts[piece] *= -1;
+			}
+			flip();
+		}
+	}
+
+	uint64_t get_mask(int piece, int color) const
+	{
+		return pieces[piece] & colors[color];
+	}
+
+	void flip()
+	{
+		for (int piece = 0; piece < 6; piece++)
+		{
+			flip_squares(pieces[piece]);
+		}
+		for (int color = 0; color < 2; color++)
+		{
+			flip_squares(colors[color]);
+		}
+	}
+};
