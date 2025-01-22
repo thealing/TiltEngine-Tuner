@@ -39,3 +39,23 @@ inline void flip_squares(uint64_t& bitboard)
 {
 	bitboard = _byteswap_uint64(bitboard);
 }
+
+inline uint64_t move_up(uint64_t bitboard)
+{
+	return bitboard >> 8;
+}
+
+inline uint64_t move_down(uint64_t bitboard)
+{
+	return bitboard << 8;
+}
+
+inline uint64_t move_left(uint64_t bitboard)
+{
+	return (bitboard >> 1) & ~0x8080808080808080ULL;
+}
+
+inline uint64_t move_right(uint64_t bitboard)
+{
+	return (bitboard << 1) & ~0x0101010101010101ULL;
+}
