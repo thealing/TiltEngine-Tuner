@@ -12,6 +12,10 @@
 #include <functional>
 #include <thread>
 
+#define THREAD_COUNT 7
+
+#define USE_POSITION_CACHE false
+
 using namespace std;
 
 inline const filesystem::path input_path = "input.txt";
@@ -27,6 +31,11 @@ void load_input()
 {
 	Stopwatch stopwatch("loading from input file");
 	ifstream file(input_path);
+	if (!file)
+	{
+		cout << "opening input file failed" << endl;
+		exit(1);
+	}
 	string line;
 	while (getline(file, line))
 	{
@@ -58,12 +67,20 @@ void save_cache()
 
 void load_data()
 {
-	if (load_cache())
+	if (USE_POSITION_CACHE)
 	{
-		return;
+		if (load_cache())
+		{
+			return;
+		}
+		load_input();
+		save_cache();
 	}
-	load_input();
-	save_cache();
+	else
+	{
+		cout << "position cache disabled" << endl;
+		load_input();
+	}
 }
 
 inline const string piece_names[6] = { "pawn", "knight", "bishop", "rook", "queen", "king" };
@@ -158,9 +175,6 @@ double sigmoid_derivative(double x)
 	double y = sigmoid(x);
 	return C * y * (1 - y);
 }
-
-// The results slightly fluctuate depending on the number of threads.
-constexpr int THREAD_COUNT = 7;
 
 void run_threads(const function<void(int, int, int)>& proc)
 {

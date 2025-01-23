@@ -1,0 +1,6 @@
+.vs
+tmp
+bin
+out
+*.txt
+*.bin
