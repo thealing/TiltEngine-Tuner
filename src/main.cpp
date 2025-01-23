@@ -45,6 +45,13 @@ void load_input()
 		positions.emplace_back(line.c_str());
 		double result = stod(line.substr(line.find('[') + 1));
 		results.push_back(result);
+#ifdef _DEBUG
+		if (N % 12345 == 0)
+		{
+			cout << Position(line.c_str()).visualize() << endl;
+			cin.get();
+		}
+#endif
 	}
 }
 
@@ -132,7 +139,7 @@ void export_values(const filesystem::path& path, const Evaluator& evaluator, dou
 			file << phase_names[phase] << '_' << piece_names[piece] << "_square_values" << endl << endl;
 			for (int square = 0; square < 64; square++)
 			{
-				file << setw(6) << (int)((double*)&evaluator.square_values[piece][square])[phase] << ' ';
+				file << setw(6) << (int)((double*)&evaluator.piece_square_values[piece][square])[phase] << ' ';
 				if (square % 8 == 7)
 				{
 					file << endl;
@@ -147,6 +154,19 @@ void export_values(const filesystem::path& path, const Evaluator& evaluator, dou
 		for (int square = 0; square < 64; square++)
 		{
 			file << setw(6) << (int)((double*)&evaluator.passed_pawn_values[square])[phase] << ' ';
+			if (square % 8 == 7)
+			{
+				file << endl;
+			}
+		}
+		file << endl;
+	}
+	for (int phase = 0; phase < 2; phase++)
+	{
+		file << phase_names[phase] << "_doubled_pawn_values" << endl << endl;
+		for (int square = 0; square < 64; square++)
+		{
+			file << setw(6) << (int)((double*)&evaluator.doubled_pawn_values[square])[phase] << ' ';
 			if (square % 8 == 7)
 			{
 				file << endl;
