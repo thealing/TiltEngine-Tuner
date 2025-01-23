@@ -16,6 +16,8 @@
 
 #define USE_POSITION_CACHE false
 
+#define EXPORT_INTERVAL 100
+
 using namespace std;
 
 inline const filesystem::path input_path = "input.txt";
@@ -138,6 +140,19 @@ void export_values(const filesystem::path& path, const Evaluator& evaluator, dou
 			}
 			file << endl;
 		}
+	}
+	for (int phase = 0; phase < 2; phase++)
+	{
+		file << phase_names[phase] << "_passed_pawn_values" << endl << endl;
+		for (int square = 0; square < 64; square++)
+		{
+			file << setw(6) << (int)((double*)&evaluator.passed_pawn_values[square])[phase] << ' ';
+			if (square % 8 == 7)
+			{
+				file << endl;
+			}
+		}
+		file << endl;
 	}
 	file << "error: " << error << endl;
 }
@@ -300,7 +315,7 @@ int main()
 		}
 		cout << "new learning rate: " << learning_rate << endl;
 		iteration_count++;
-		if (iteration_count % 5 == 0)
+		if (iteration_count % EXPORT_INTERVAL == 0)
 		{
 			save_values(evaluator, iteration_count, learning_rate);
 			export_values(to_string(iteration_count) + ".txt", evaluator, error);

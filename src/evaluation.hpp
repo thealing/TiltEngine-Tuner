@@ -116,6 +116,7 @@ struct Evaluator
 	Score move_values[6];
 	Score attack_values[6];
 	Score defense_values[6];
+	Score passed_pawn_values[64];
 	double weights[6];
 	double total_weight;
 
@@ -155,6 +156,12 @@ struct Evaluator
 					score += square_values[piece][square];
 				}
 			}
+			uint64_t mask = position.passed_pawn_masks[color];
+			while (mask)
+			{
+				int square = pop_square(mask);
+				score += passed_pawn_values[square];
+			}
 			score *= -1;
 			position.flip();
 		}
@@ -187,6 +194,12 @@ struct Evaluator
 					int square = pop_square(mask);
 					square_values[piece][square] += score_change;
 				}
+			}
+			uint64_t mask = position.passed_pawn_masks[color];
+			while (mask)
+			{
+				int square = pop_square(mask);
+				passed_pawn_values[square] += score_change;
 			}
 			score_change *= -1;
 			position.flip();

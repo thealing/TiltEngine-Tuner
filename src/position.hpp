@@ -14,6 +14,7 @@ struct Position
 	char move_counts[6];
 	char attack_counts[6];
 	char defense_counts[6];
+	uint64_t passed_pawn_masks[2];
 
 	Position()
 	{
@@ -66,7 +67,6 @@ struct Position
 				square++;
 			}
 		}
-		// precalculating mobility counters
 		for (int color = 0; color < 2; color++)
 		{
 			uint64_t color_mask = colors[color];
@@ -82,6 +82,12 @@ struct Position
 			uint64_t opponent_pawn_mask = get_mask(PAWN, color ^ 1);
 			uint64_t opponent_pawn_move_mask = move_down(opponent_pawn_mask);
 			uint64_t opponent_pawn_attack_mask = move_left(opponent_pawn_move_mask) | move_right(opponent_pawn_move_mask);
+			uint64_t opponent_pawn_attack_forward = opponent_pawn_attack_mask;
+			for (int i = 0; i < 4; i++)
+			{
+				opponent_pawn_attack_forward |= move_down(opponent_pawn_attack_forward);
+			}
+			passed_pawn_masks[color] = pawn_mask & ~opponent_pawn_attack_forward;
 			for (int piece = 1; piece < 6; piece++)
 			{
 				uint64_t src_mask = get_mask(piece, color);
