@@ -1,5 +1,7 @@
 #pragma once
 
+inline constexpr int NONE = -1;
+
 inline constexpr int PAWN = 0;
 inline constexpr int KNIGHT = 1;
 inline constexpr int BISHOP = 2;
