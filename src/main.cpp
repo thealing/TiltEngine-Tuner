@@ -98,7 +98,8 @@ inline const string phase_names[2] = { "opening", "endgame" };
 inline const string type_prefix = "constexpr static Score _";
 inline const string value_start = " = ";
 inline const string value_end = ";\n";
-inline const string array_start = " = {\n";
+inline const string square_array_start = "[SQUARE_COUNT] = {\n";
+inline const string piece_array_start = "[PIECE_COUNT] = {\n";
 inline const string array_end = "};\n";
 inline const string identation = "  ";
 
@@ -106,77 +107,92 @@ void export_values(const filesystem::path& path, const Evaluator& evaluator)
 {
 	filesystem::create_directories(output_path);
 	ofstream file(output_path / path);
-	auto write_pieces = [&](const Score* values, int phase)
+	auto write_weights = [&]()
 	{
-		file << identation;
+		file << type_prefix << "weights[PIECE_COUNT] = { ";
+		int total_weight = 0;
 		for (int piece = 0; piece < 6; piece++)
 		{
-			file << setw(4) << (int)((double*)&values[piece])[phase] << (piece == 5 ? "\n" : ", ");
+			int weight = (int)evaluator.weights[piece];
+			total_weight += weight;
+			file << weight << (piece == 5 ? " " : ", ");
 		}
+		file << array_end;
+		file << type_prefix << "total_weight" << value_start << total_weight << value_end;
 	};
-	auto write_squares = [&](const Score* values, int phase)
+	auto write_value = [&](const Score& scores, int phase)
 	{
+		file << value_start << (int)((double*)&scores)[phase] << value_end;
+	};
+	auto write_pieces = [&](const Score* scores, int phase)
+	{
+		file << piece_array_start << identation;
+		for (int piece = 0; piece < 6; piece++)
+		{
+			file << setw(4) << (int)((double*)&scores[piece])[phase] << (piece == 5 ? "\n" : ", ");
+		}
+		file << array_end;
+	};
+	auto write_squares = [&](const Score* scores, int phase)
+	{
+		file << square_array_start;
 		for (int square = 0; square < 64; square++)
 		{
 			if (square % 8 == 0)
 			{
 				file << identation;
 			}
-			file << setw(4) << (int)((double*)&values[square])[phase] << ", ";
+			file << setw(4) << (int)((double*)&scores[square])[phase] << ", ";
 			if (square % 8 == 7)
 			{
 				file << "\n";
 			}
 		}
+		file << array_end;
 	};
-	file << type_prefix << "weights = { ";
-	int total_weight = 0;
-	for (int piece = 0; piece < 6; piece++)
-	{
-		int weight = (int)evaluator.weights[piece];
-		total_weight += weight;
-		file << weight << (piece == 5 ? " " : ", ");
-	}
-	file << array_end;
-	file << type_prefix << "total_weight" << value_start << total_weight << value_end;
+	write_weights();
 	for (int phase = 0; phase < 2; phase++)
 	{
-		file << type_prefix << phase_names[phase] << "_move_values" << array_start;
+		file << type_prefix << phase_names[phase] << "_move_values";
 		write_pieces(evaluator.move_values, phase);
-		file << array_end;
 	}
 	for (int phase = 0; phase < 2; phase++)
 	{
-		file << type_prefix << phase_names[phase] << "_attack_values" << array_start;
+		file << type_prefix << phase_names[phase] << "_attack_values";
 		write_pieces(evaluator.attack_values, phase);
-		file << array_end;
 	}
 	for (int phase = 0; phase < 2; phase++)
 	{
-		file << type_prefix << phase_names[phase] << "_defense_values" << array_start;
+		file << type_prefix << phase_names[phase] << "_defense_values";
 		write_pieces(evaluator.defense_values, phase);
-		file << array_end;
 	}
 	for (int piece = 0; piece < 6; piece++)
 	{
 		for (int phase = 0; phase < 2; phase++)
 		{
-			file << type_prefix << phase_names[phase] << '_' << piece_names[piece] << "_square_values" << array_start;
+			file << type_prefix << phase_names[phase] << '_' << piece_names[piece] << "_square_values";
 			write_squares(evaluator.piece_square_values[piece], phase);
-			file << array_end;
 		}
 	}
 	for (int phase = 0; phase < 2; phase++)
 	{
-		file << type_prefix << phase_names[phase] << "_passed_pawn_values" << array_start;
+		file << type_prefix << phase_names[phase] << "_passed_pawn_values";
 		write_squares(evaluator.passed_pawn_values, phase);
-		file << array_end;
 	}
 	for (int phase = 0; phase < 2; phase++)
 	{
-		file << type_prefix << phase_names[phase] << "_doubled_pawn_values" << array_start;
-		write_squares(evaluator.doubled_pawn_values, phase);
-		file << array_end;
+		file << type_prefix << phase_names[phase] << "_doubled_pawn_value";
+		write_value(evaluator.doubled_pawn_value, phase);
+	}
+	for (int phase = 0; phase < 2; phase++)
+	{
+		file << type_prefix << phase_names[phase] << "_isolated_pawn_value";
+		write_value(evaluator.isolated_pawn_value, phase);
+	}
+	for (int phase = 0; phase < 2; phase++)
+	{
+		file << type_prefix << phase_names[phase] << "_backward_pawn_value";
+		write_value(evaluator.backward_pawn_value, phase);
 	}
 }
 
@@ -320,7 +336,7 @@ int main()
 	cout << "starting total error: " << error << " mean: " << error / N << endl;
 	// Even when the error already looks steady, the values are still changing quite a bit,
 	// so it is worthy to keep going even with a very low learning rate.
-	while (wait_for_input() && iteration_count < 12000)
+	while (wait_for_input() && iteration_count < 12500)
 	{
 		Evaluator new_evaluator = evaluator;
 		update_all(new_evaluator, evaluations, learning_rate);
