@@ -45,6 +45,7 @@ void load_input()
 		positions.emplace_back(line.c_str());
 		double result = stod(line.substr(line.find('[') + 1));
 		results.push_back(result);
+		// TODO: more sophisticated checking of correctness?
 #ifdef _DEBUG
 		if (N % 12345 == 0)
 		{
@@ -94,87 +95,89 @@ void load_data()
 
 inline const string piece_names[6] = { "pawn", "knight", "bishop", "rook", "queen", "king" };
 inline const string phase_names[2] = { "opening", "endgame" };
+inline const string type_prefix = "constexpr static Score _";
+inline const string value_start = " = ";
+inline const string value_end = ";\n";
+inline const string array_start = " = {\n";
+inline const string array_end = "};\n";
+inline const string identation = "  ";
 
-void export_values(const filesystem::path& path, const Evaluator& evaluator, double error)
+void export_values(const filesystem::path& path, const Evaluator& evaluator)
 {
 	filesystem::create_directories(output_path);
 	ofstream file(output_path / path);
-	file << "weights" << endl << endl;
+	auto write_pieces = [&](const Score* values, int phase)
+	{
+		file << identation;
+		for (int piece = 0; piece < 6; piece++)
+		{
+			file << setw(4) << (int)((double*)&values[piece])[phase] << (piece == 5 ? "\n" : ", ");
+		}
+	};
+	auto write_squares = [&](const Score* values, int phase)
+	{
+		for (int square = 0; square < 64; square++)
+		{
+			if (square % 8 == 0)
+			{
+				file << identation;
+			}
+			file << setw(4) << (int)((double*)&values[square])[phase] << ", ";
+			if (square % 8 == 7)
+			{
+				file << "\n";
+			}
+		}
+	};
+	file << type_prefix << "weights = { ";
+	int total_weight = 0;
 	for (int piece = 0; piece < 6; piece++)
 	{
-		file << evaluator.weights[piece] << ' ';
+		int weight = (int)evaluator.weights[piece];
+		total_weight += weight;
+		file << weight << (piece == 5 ? " " : ", ");
 	}
-	file << endl << endl;
+	file << array_end;
+	file << type_prefix << "total_weight" << value_start << total_weight << value_end;
 	for (int phase = 0; phase < 2; phase++)
 	{
-		file << phase_names[phase] << "_move_values" << endl << endl;
-		for (int piece = 0; piece < 6; piece++)
-		{
-			file << ((double*)&evaluator.move_values[piece])[phase] << ' ';
-		}
-		file << endl << endl;
-	}
-	for (int phase = 0; phase < 2; phase++)
-	{
-		file << phase_names[phase] << "_attack_values" << endl << endl;
-		for (int piece = 0; piece < 6; piece++)
-		{
-			file << ((double*)&evaluator.attack_values[piece])[phase] << ' ';
-		}
-		file << endl << endl;
+		file << type_prefix << phase_names[phase] << "_move_values" << array_start;
+		write_pieces(evaluator.move_values, phase);
+		file << array_end;
 	}
 	for (int phase = 0; phase < 2; phase++)
 	{
-		file << phase_names[phase] << "_defense_values" << endl << endl;
-		for (int piece = 0; piece < 6; piece++)
-		{
-			file << ((double*)&evaluator.defense_values[piece])[phase] << ' ';
-		}
-		file << endl << endl;
+		file << type_prefix << phase_names[phase] << "_attack_values" << array_start;
+		write_pieces(evaluator.attack_values, phase);
+		file << array_end;
+	}
+	for (int phase = 0; phase < 2; phase++)
+	{
+		file << type_prefix << phase_names[phase] << "_defense_values" << array_start;
+		write_pieces(evaluator.defense_values, phase);
+		file << array_end;
 	}
 	for (int piece = 0; piece < 6; piece++)
 	{
 		for (int phase = 0; phase < 2; phase++)
 		{
-			file << phase_names[phase] << '_' << piece_names[piece] << "_square_values" << endl << endl;
-			for (int square = 0; square < 64; square++)
-			{
-				file << setw(6) << (int)((double*)&evaluator.piece_square_values[piece][square])[phase] << ' ';
-				if (square % 8 == 7)
-				{
-					file << endl;
-				}
-			}
-			file << endl;
+			file << type_prefix << phase_names[phase] << '_' << piece_names[piece] << "_square_values" << array_start;
+			write_squares(evaluator.piece_square_values[piece], phase);
+			file << array_end;
 		}
 	}
 	for (int phase = 0; phase < 2; phase++)
 	{
-		file << phase_names[phase] << "_passed_pawn_values" << endl << endl;
-		for (int square = 0; square < 64; square++)
-		{
-			file << setw(6) << (int)((double*)&evaluator.passed_pawn_values[square])[phase] << ' ';
-			if (square % 8 == 7)
-			{
-				file << endl;
-			}
-		}
-		file << endl;
+		file << type_prefix << phase_names[phase] << "_passed_pawn_values" << array_start;
+		write_squares(evaluator.passed_pawn_values, phase);
+		file << array_end;
 	}
 	for (int phase = 0; phase < 2; phase++)
 	{
-		file << phase_names[phase] << "_doubled_pawn_values" << endl << endl;
-		for (int square = 0; square < 64; square++)
-		{
-			file << setw(6) << (int)((double*)&evaluator.doubled_pawn_values[square])[phase] << ' ';
-			if (square % 8 == 7)
-			{
-				file << endl;
-			}
-		}
-		file << endl;
+		file << type_prefix << phase_names[phase] << "_doubled_pawn_values" << array_start;
+		write_squares(evaluator.doubled_pawn_values, phase);
+		file << array_end;
 	}
-	file << "error: " << error << endl;
 }
 
 void save_values(const Evaluator& evaluator, int iteration_count, double learning_rate)
@@ -295,17 +298,20 @@ bool wait_for_input()
 
 int main()
 {
-	cout << "tuner version 17 (pst, weights - exact)" << endl;
+	cout << "tuner version 19 (pst, weights, mobility, pawns)" << endl;
 	cout << "running on " << THREAD_COUNT << " threads" << endl;
 	load_data();
 	cout << "loaded " << N << " positions" << endl;
 	Evaluator evaluator;
-	cout << "press any key to start..." << endl;
-	if (cin.get() == 'r')
+	cout << "restart? [y/n] ";
+	string line;
+	getline(cin, line);
+	error_code ec;
+	if (line.starts_with("y"))
 	{
-		evaluator.init();
-		cout << "values have been reset" << endl;
+		filesystem::remove(values_path, ec);
 	}
+	filesystem::remove_all(output_path, ec);
 	int iteration_count;
 	double learning_rate;
 	load_values(evaluator, iteration_count, learning_rate);
@@ -314,7 +320,7 @@ int main()
 	cout << "starting total error: " << error << " mean: " << error / N << endl;
 	// Even when the error already looks steady, the values are still changing quite a bit,
 	// so it is worthy to keep going even with a very low learning rate.
-	while (wait_for_input())
+	while (wait_for_input() && iteration_count < 12000)
 	{
 		Evaluator new_evaluator = evaluator;
 		update_all(new_evaluator, evaluations, learning_rate);
@@ -338,10 +344,10 @@ int main()
 		if (iteration_count % EXPORT_INTERVAL == 0)
 		{
 			save_values(evaluator, iteration_count, learning_rate);
-			export_values(to_string(iteration_count) + ".txt", evaluator, error);
+			export_values(to_string(iteration_count) + "_" + to_string(lround(error)) + ".txt", evaluator);
 		}
 	}
 	cout << "final error: " << error << endl;
-	export_values("final.txt", evaluator, error);
+	export_values("final.txt", evaluator);
 	return 0;
 }
