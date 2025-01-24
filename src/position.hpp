@@ -3,6 +3,7 @@
 #include "chess.hpp"
 #include "bitmasks.hpp"
 
+#include <iostream>
 #include <string>
 #include <sstream>
 #include <iomanip>
@@ -20,6 +21,7 @@ struct Position
 	int16_t defense_counts[2][6];
 	uint64_t passed_pawns[2];
 	uint64_t doubled_pawns[2];
+	uint64_t backwards_pawns[2];
 
 	Position()
 	{
@@ -72,6 +74,7 @@ struct Position
 				square++;
 			}
 		}
+		// preprocessing
 		for (int color = 0; color < 2; color++)
 		{
 			uint64_t color_mask = colors[color];
@@ -84,22 +87,13 @@ struct Position
 			uint64_t opp_pawn_mask = get_mask(PAWN, color ^ 1);
 			uint64_t opp_pawn_move_mask = move_down(opp_pawn_mask);
 			uint64_t opp_pawn_attack_mask = move_left(opp_pawn_move_mask) | move_right(opp_pawn_move_mask);
-			uint64_t behind_pawns_mask = move_down(pawn_mask);
-			uint64_t opp_pawn_span_mask = opp_pawn_mask | opp_pawn_attack_mask;
-			for (int i = 0; i < 8; i++)
-			{
-				behind_pawns_mask |= move_down(behind_pawns_mask);
-				opp_pawn_span_mask |= move_down(opp_pawn_span_mask);
-			}
 			move_counts[color][PAWN] += count_squares(pawn_move_mask & empty_mask);
 			attack_counts[color][PAWN] += count_squares(pawn_attack_mask & opp_mask);
 			defense_counts[color][PAWN] += count_squares(pawn_attack_mask & color_mask);
-			passed_pawns[color] = pawn_mask & ~behind_pawns_mask & ~opp_pawn_span_mask;
-			doubled_pawns[color] = pawn_mask & behind_pawns_mask;
 			for (int piece = 1; piece < 6; piece++)
 			{
 				uint64_t src_mask = get_mask(piece, color);
-				while (src_mask != 0)
+				while (src_mask)
 				{
 					int src_square = pop_square(src_mask);
 					uint64_t dst_mask = 0;
@@ -128,6 +122,44 @@ struct Position
 					move_counts[color][piece] += count_squares(move_mask);
 					attack_counts[color][piece] += count_squares(attack_mask);
 					defense_counts[color][piece] += count_squares(defense_mask);
+				}
+			}
+			while (pawn_mask)
+			{
+				int pawn_square = pop_square(pawn_mask);
+				int pawn_rank = pawn_square / 8;
+				int pawn_file = pawn_square % 8;
+				bool passed = true;
+				bool doubled = false;
+				uint64_t mask = pieces[PAWN];
+				while (mask)
+				{
+					int square = pop_square(mask);
+					int rank = square / 8;
+					int file = square % 8;
+					if (test_square(color_mask, square))
+					{
+						if (file == pawn_file && rank < pawn_rank)
+						{
+							passed = false;
+							doubled = true;
+						}
+					}
+					if (test_square(opp_mask, square))
+					{
+						if (abs(file - pawn_file) <= 1 && rank < pawn_rank)
+						{
+							passed = false;
+						}
+					}
+				}
+				if (passed)
+				{
+					set_square(passed_pawns[color], pawn_square);
+				}
+				if (doubled)
+				{
+					set_square(doubled_pawns[color], pawn_square);
 				}
 			}
 			flip();
@@ -179,7 +211,7 @@ struct Position
 	{
 		const char piece_letters[] = { 'p', 'n', 'b', 'r', 'q', 'k' };
 		const char* piece_names[] = { "pawn", "knight", "bishop", "rook", "queen", "king" };
-		const char* color_names[] = { "WHITE", "BLACK" };
+		const char* color_names[] = { "white", "black" };
 		std::stringstream ss;
 		ss << "board:" << '\n' << '\n';
 		for (int square = 0; square < 64; square++)
@@ -211,7 +243,8 @@ struct Position
 				}
 				return str;
 			};
-			ss << std::setw(47) << color_names[color] << '\n' << '\n';
+			ss << std::setw(47) << color_names[color] << '\n';
+			ss << std::setw(55) << "---------------------" << '\n' << '\n';
 			ss << "                ";
 			for (int piece = 0; piece < 6; piece++)
 			{
@@ -236,7 +269,7 @@ struct Position
 				ss << std::setw(9) << defense_counts[color][piece];
 			}
 			ss << '\n' << '\n';
-			ss << "passed pawns: " << format_bitboard(passed_pawns[color]) << '\n' << '\n';
+			ss << "passed pawns:  " << format_bitboard(passed_pawns[color]) << '\n' << '\n';
 			ss << "doubled pawns: " << format_bitboard(doubled_pawns[color]) << '\n' << '\n';
 		}
 		return ss.str();
