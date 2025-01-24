@@ -21,7 +21,8 @@ struct Position
 	int16_t defense_counts[2][6];
 	uint64_t passed_pawns[2];
 	uint64_t doubled_pawns[2];
-	uint64_t backwards_pawns[2];
+	uint64_t isolated_pawns[2];
+	uint64_t backward_pawns[2];
 
 	Position()
 	{
@@ -131,6 +132,8 @@ struct Position
 				int pawn_file = pawn_square % 8;
 				bool passed = true;
 				bool doubled = false;
+				bool isolated = true;
+				bool backward = true;
 				uint64_t mask = pieces[PAWN];
 				while (mask)
 				{
@@ -141,8 +144,15 @@ struct Position
 					{
 						if (file == pawn_file && rank < pawn_rank)
 						{
-							passed = false;
 							doubled = true;
+						}
+						if (abs(file - pawn_file) == 1)
+						{
+							isolated = false;
+						}
+						if (abs(file - pawn_file) == 1 && rank >= pawn_rank)
+						{
+							backward = false;
 						}
 					}
 					if (test_square(opp_mask, square))
@@ -152,6 +162,36 @@ struct Position
 							passed = false;
 						}
 					}
+					if (file == pawn_file && rank == pawn_rank - 1)
+					{
+						backward = false;
+					}
+				}
+				for (int square = pawn_square - 8; square >= 0; square -= 8)
+				{
+					if (test_square(pawn_attack_mask, square))
+					{
+						backward = false;
+						break;
+					}
+					if (test_square(opp_pawn_attack_mask, square))
+					{
+						break;
+					}
+				}
+				if (passed)
+				{
+					isolated = false;
+					backward = false;
+				}
+				if (doubled)
+				{
+					passed = false;
+					isolated = false;
+				}
+				if (isolated)
+				{
+					backward = false;
 				}
 				if (passed)
 				{
@@ -160,6 +200,14 @@ struct Position
 				if (doubled)
 				{
 					set_square(doubled_pawns[color], pawn_square);
+				}
+				if (isolated)
+				{
+					set_square(isolated_pawns[color], pawn_square);
+				}
+				if (backward)
+				{
+					set_square(backward_pawns[color], pawn_square);
 				}
 			}
 			flip();
@@ -269,8 +317,10 @@ struct Position
 				ss << std::setw(9) << defense_counts[color][piece];
 			}
 			ss << '\n' << '\n';
-			ss << "passed pawns:  " << format_bitboard(passed_pawns[color]) << '\n' << '\n';
-			ss << "doubled pawns: " << format_bitboard(doubled_pawns[color]) << '\n' << '\n';
+			ss << "passed pawns:   " << format_bitboard(passed_pawns[color]) << '\n' << '\n';
+			ss << "doubled pawns:  " << format_bitboard(doubled_pawns[color]) << '\n' << '\n';
+			ss << "isolated pawns: " << format_bitboard(isolated_pawns[color]) << '\n' << '\n';
+			ss << "backward pawns: " << format_bitboard(backward_pawns[color]) << '\n' << '\n';
 		}
 		return ss.str();
 	}
