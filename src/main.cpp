@@ -339,15 +339,16 @@ int main()
 	cout << "restart? [y/n] ";
 	string line;
 	getline(cin, line);
-	error_code ec;
 	if (line.starts_with("y"))
 	{
+		error_code ec;
 		filesystem::remove(values_path, ec);
+		filesystem::remove_all(output_path, ec);
 	}
-	filesystem::remove_all(output_path, ec);
 	int iteration_count;
 	double learning_rate;
 	load_values(evaluator, iteration_count, learning_rate);
+	export_values("start.txt", evaluator);
 	vector<Evaluation> evaluations(N);
 	double error = evaluate_all(evaluator, evaluations);
 	cout << "starting total error: " << error << " mean: " << error / N << endl;
