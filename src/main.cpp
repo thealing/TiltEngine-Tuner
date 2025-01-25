@@ -109,12 +109,13 @@ void export_values(const filesystem::path& path, const Evaluator& evaluator)
 	ofstream file(output_path / path);
 	auto write_weights = [&]()
 	{
+		constexpr int piece_counts[6] = { 16, 4, 4, 4, 2, 2 };
 		file << type_prefix << "weights[PIECE_COUNT] = { ";
 		int total_weight = 0;
 		for (int piece = 0; piece < 6; piece++)
 		{
 			int weight = (int)evaluator.weights[piece];
-			total_weight += weight;
+			total_weight += weight * piece_counts[piece];
 			file << weight << (piece == 5 ? " " : ", ");
 		}
 		file << array_end;
@@ -298,15 +299,31 @@ bool wait_for_input()
 		cin.peek();
 		state = 2;
 	};
+	struct Waiter
+	{
+		Waiter()
+		{
+			wait_thread = thread(wait_proc);
+		}
+
+		~Waiter()
+		{
+			wait_thread.detach();
+		}
+
+		static void start()
+		{
+			static struct Waiter instance;
+		}
+	};
 	switch (state)
 	{
 		case 0:
 			state = 1;
-			wait_thread = thread(wait_proc);
+			Waiter::start();
 		case 1:
 			return true;
 		case 2:
-			wait_thread.join();
 			state = 3;
 	}
 	return false;
@@ -336,7 +353,7 @@ int main()
 	cout << "starting total error: " << error << " mean: " << error / N << endl;
 	// Even when the error already looks steady, the values are still changing quite a bit,
 	// so it is worthy to keep going even with a very low learning rate.
-	while (wait_for_input() && iteration_count < 12500)
+	while (wait_for_input() && iteration_count < 12900)
 	{
 		Evaluator new_evaluator = evaluator;
 		update_all(new_evaluator, evaluations, learning_rate);
