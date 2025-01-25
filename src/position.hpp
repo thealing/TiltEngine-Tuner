@@ -184,14 +184,14 @@ struct Position
 					isolated = false;
 					backward = false;
 				}
+				if (isolated)
+				{
+					backward = false;
+				}
 				if (doubled)
 				{
 					passed = false;
 					isolated = false;
-				}
-				if (isolated)
-				{
-					backward = false;
 				}
 				if (passed)
 				{
