@@ -31,17 +31,20 @@ struct Position
 
 	Position(const char fen[]) : Position()
 	{
-		// parsing fen
 		for (int square = 0; square < 64; fen++)
 		{
 			char c = *fen;
+			if (c == 0)
+			{
+				break;
+			}
 			if (isdigit(c))
 			{
 				square += c - '0';
 			}
 			if (isalpha(c))
 			{
-				int piece;
+				int piece = 0;
 				switch (tolower(c))
 				{
 					case 'p':
@@ -75,7 +78,11 @@ struct Position
 				square++;
 			}
 		}
-		// preprocessing
+		init();
+	}
+
+	void init()
+	{
 		for (int color = 0; color < 2; color++)
 		{
 			uint64_t color_mask = colors[color];
@@ -214,6 +221,18 @@ struct Position
 		}
 	}
 
+	void flip()
+	{
+		for (int piece = 0; piece < 6; piece++)
+		{
+			flip_squares(pieces[piece]);
+		}
+		for (int color = 0; color < 2; color++)
+		{
+			flip_squares(colors[color]);
+		}
+	}
+
 	uint64_t get_mask(int piece, int color) const
 	{
 		return pieces[piece] & colors[color];
@@ -241,18 +260,6 @@ struct Position
 			}
 		}
 		return NONE;
-	}
-
-	void flip()
-	{
-		for (int piece = 0; piece < 6; piece++)
-		{
-			flip_squares(pieces[piece]);
-		}
-		for (int color = 0; color < 2; color++)
-		{
-			flip_squares(colors[color]);
-		}
 	}
 
 	std::string visualize() const

@@ -18,7 +18,7 @@ public:
 	}
 
 	template<typename T>
-	friend InputFileStream& operator>>(InputFileStream& self, const T& value)
+	friend InputFileStream& operator>>(InputFileStream& self, T& value)
 	{
 		self._file.read((char*)&value, sizeof(T));
 		return self;
