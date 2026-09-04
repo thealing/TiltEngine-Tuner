@@ -162,7 +162,8 @@ inline bool init_bitmasks()
 						break;
 					}
 				}
-			} while (sub_mask != 0);
+			}
+			while (sub_mask != 0);
 		}
 	}
 	for (int src_rank = 0; src_rank < 8; src_rank++)
@@ -212,7 +213,8 @@ inline bool init_bitmasks()
 						break;
 					}
 				}
-			} while (sub_mask != 0);
+			}
+			while (sub_mask != 0);
 		}
 	}
 	return true;
