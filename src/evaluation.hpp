@@ -5,10 +5,6 @@
 #include <algorithm>
 #include <numeric>
 
-// for debugging
-//#include <iostream>
-//using namespace std;
-
 struct alignas(16) Score
 {
 	double opening;
@@ -130,8 +126,6 @@ struct Evaluator
 	
 	void init()
 	{
-		// the initial values should not matter as long as we do enough iterations...
-		// maybe try to start with all zeros?
 		std::fill(std::begin(piece_square_values[0]), std::end(piece_square_values[0]), Score(100, 100));
 		std::fill(std::begin(piece_square_values[1]), std::end(piece_square_values[1]), Score(300, 300));
 		std::fill(std::begin(piece_square_values[2]), std::end(piece_square_values[2]), Score(300, 300));
@@ -229,7 +223,7 @@ struct Evaluator
 			double q = t - p * w;
 			double Q = T - m * w;
 			double x = p * Q - m * q;
-			Score N = evaluation.score * Score(x, -x - 1);
+			Score N = evaluation.score * Score(x, -x);
 			weights[piece] += (double)N / D * scale;
 		}
 	}
