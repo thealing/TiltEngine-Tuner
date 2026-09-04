@@ -8,13 +8,14 @@
 #include <cmath>
 #include <vector>
 #include <string>
+#include <string_view>
 #include <array>
 #include <functional>
 #include <thread>
 
-#define THREAD_COUNT 7
+#define THREAD_COUNT 4
 
-#define USE_POSITION_CACHE false
+#define USE_POSITION_CACHE true
 
 #define EXPORT_INTERVAL 100
 
@@ -35,7 +36,7 @@ void load_input()
 	ifstream file(input_path);
 	if (!file)
 	{
-		cout << "opening input file failed" << endl;
+		cout << "input file opening failed" << endl;
 		exit(1);
 	}
 	string line;
@@ -43,16 +44,21 @@ void load_input()
 	{
 		N++;
 		positions.emplace_back(line.c_str());
-		double result = stod(line.substr(line.find('[') + 1));
-		results.push_back(result);
-		// TODO: more sophisticated checking of correctness?
-#ifdef _DEBUG
-		if (N % 12345 == 0)
+		std::string_view line_view(line);
+		std::string_view result_view = line_view.substr(line_view.find('[') + 1);
+		if (result_view == line_view)
 		{
-			cout << Position(line.c_str()).visualize() << endl;
-			cin.get();
+			cout << "invalid input entry: " << line_view << endl;
+			exit(1);
 		}
-#endif
+		char* end = 0;
+		double result = strtod(result_view.data(), &end);
+		if (end == result_view.data())
+		{
+			cout << "invalid input result: " << line_view << endl;
+			exit(1);
+		}
+		results.push_back(result);
 	}
 }
 
@@ -290,14 +296,14 @@ void update_all(Evaluator& evaluator, const vector<Evaluation>& evaluations, dou
 	evaluator.finalize();
 }
 
-bool wait_for_input() 
+bool wait_for_input()
 {
-	static int state = 0;
+	static std::atomic<int> state = 0;
 	static thread wait_thread;
-	static auto wait_proc = [&]()
+	static auto wait_proc = []()
 	{
 		cin.peek();
-		state = 2;
+		state.store(2);
 	};
 	struct Waiter
 	{
@@ -305,26 +311,24 @@ bool wait_for_input()
 		{
 			wait_thread = thread(wait_proc);
 		}
-
 		~Waiter()
 		{
 			wait_thread.detach();
 		}
-
 		static void start()
 		{
 			static struct Waiter instance;
 		}
 	};
-	switch (state)
+	switch (state.load())
 	{
 		case 0:
-			state = 1;
+			state.store(1);
 			Waiter::start();
 		case 1:
 			return true;
 		case 2:
-			state = 3;
+			state.store(3);
 	}
 	return false;
 }
@@ -352,9 +356,7 @@ int main()
 	vector<Evaluation> evaluations(N);
 	double error = evaluate_all(evaluator, evaluations);
 	cout << "starting total error: " << error << " mean: " << error / N << endl;
-	// Even when the error already looks steady, the values are still changing quite a bit,
-	// so it is worthy to keep going even with a very low learning rate.
-	while (wait_for_input() && iteration_count < 12900)
+	while (wait_for_input() && iteration_count < 12000)
 	{
 		Evaluator new_evaluator = evaluator;
 		update_all(new_evaluator, evaluations, learning_rate);
